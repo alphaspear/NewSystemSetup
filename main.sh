@@ -19,7 +19,7 @@ echo installing prerequisites
 
 echo
 echo setting repositories
-/bin/bash repoSetup.bash
+/bin/bash repoSetup.sh
 
 echo
 echo installing apps
