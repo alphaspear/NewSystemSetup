@@ -36,3 +36,7 @@ echo removing unused apps
 echo
 echo removing unused apps
 /bin/bash omzInstall.sh
+
+echo
+echo Downloading and installing non APT softwares
+/bin/bash downloadAndInstall.sh
