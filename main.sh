@@ -30,10 +30,6 @@ echo Downloading and installing python packages
 /bin/bash pythonPackagesInstall.sh
 
 echo
-echo adding path to .zshrc
-/bin/bash pathConfig.sh
-
-echo
 echo removing unused apps
 /bin/bash removeApps.sh
 
@@ -49,3 +45,6 @@ echo
 echo Downloading and installing non APT softwares
 /bin/bash downloadAndInstall.sh
 
+echo
+echo adding path to .zshrc
+/bin/bash pathConfig.sh
