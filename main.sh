@@ -40,3 +40,7 @@ echo removing unused apps
 echo
 echo Downloading and installing non APT softwares
 /bin/bash downloadAndInstall.sh
+
+echo
+echo Downloading and installing non APT softwares
+/bin/bash pathConfig.sh
