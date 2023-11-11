@@ -1,0 +1,7 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Anaconda
+Exec=/home/iabhilashjoshi/.local/share/anaconda3/bin/anaconda-navigator
+Icon=/home/iabhilashjoshi/.local/share/anaconda3/lib/python3.11/site-packages/anaconda_navigator/app/icons/Icon1024.png
+Terminal=false

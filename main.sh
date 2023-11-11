@@ -48,3 +48,11 @@ echo Downloading and installing non APT softwares
 echo
 echo adding path to .zshrc
 /bin/bash pathConfig.sh
+
+echo
+echo installing gnome shell extensions
+/bin/bash gnomeShellExtensionInstall.sh
+
+echo
+echo Setting username and email for git
+/bin/bash gitSetup.sh
