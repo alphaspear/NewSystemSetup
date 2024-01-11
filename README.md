@@ -39,3 +39,50 @@ if result:
 else:
     print("Failed to get a successful response after multiple attempts.")
 ```
+
+
+```
+import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+# Suppress SSL warnings
+requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+
+def make_request(url):
+    try:
+        response = requests.get(url, verify=False)  # verify=False suppresses SSL warnings
+        response.raise_for_status()  # Raise an HTTPError for bad responses
+
+        return response.text
+    except requests.exceptions.HTTPError as errh:
+        print(f"HTTP Error: {errh}")
+    except requests.exceptions.ConnectionError as errc:
+        print(f"Error Connecting: {errc}")
+    except requests.exceptions.Timeout as errt:
+        print(f"Timeout Error: {errt}")
+    except requests.exceptions.RequestException as err:
+        print(f"An error occurred: {err}")
+
+    return None
+
+def retry_request(url, max_retries=3):
+    retries = Retry(total=max_retries, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+    adapter = HTTPAdapter(max_retries=retries)
+    session = requests.Session()
+    session.mount('https://', adapter)
+
+    for attempt in range(1, max_retries + 1):
+        print(f"Attempt {attempt}:")
+        result = make_request(url)
+
+        if result:
+            print(f"Success! Response: {result}")
+            break
+
+        print("Retrying...\n")
+
+# Example usage
+api_url = "https://your-api-endpoint.com"
+retry_request(api_url)
+```
