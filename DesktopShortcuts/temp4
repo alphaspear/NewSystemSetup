@@ -1,0 +1,64 @@
+import psycopg2
+import os
+from datetime import datetime
+
+# Database connection details
+HOST = "192.168.29.11"
+USERNAME = "iabhilashjoshi"
+PASSWORD = "Abhilash@123"
+DBNAME = "private-db"
+
+# Tables to back up
+TABLES = ["public.credentials"]
+
+# Backup file name with timestamp
+BACKUP_DIR = "/home/iabhilashjoshi/quick_file_upload/bkp"
+TIMESTAMP = datetime.now().strftime("%Y%m%d%H%M%S")
+BACKUP_FILE = os.path.join(BACKUP_DIR, f"lumidb_backup_{TIMESTAMP}.sql")
+
+# Create backup directory if it doesn't exist
+os.makedirs(BACKUP_DIR, exist_ok=True)
+
+try:
+    # Connect to PostgreSQL database
+    conn = psycopg2.connect(
+        host=HOST,
+        user=USERNAME,
+        password=PASSWORD,
+        dbname=DBNAME
+    )
+    cursor = conn.cursor()
+
+    with open(BACKUP_FILE, 'w') as f:
+        for table in TABLES:
+            # Export table schema
+            cursor.execute(f"""
+                SELECT 'CREATE TABLE ' || '{table}' || E'\n(\n' ||
+                array_to_string(array_agg(column_name || ' ' || data_type ||
+                coalesce('('||character_maximum_length||')','')), E',\n') ||
+                E'\n);' AS ddl
+                FROM information_schema.columns
+                WHERE table_schema = '{table.split('.')[0]}' AND table_name = '{table.split('.')[1]}';
+            """)
+            table_schema = cursor.fetchone()[0]
+            f.write(f"-- Schema for {table}\n")
+            f.write(table_schema + ";\n\n")
+
+            # Export table data
+            f.write(f"-- Data for {table}\n")
+            cursor.copy_expert(f"COPY {table} TO STDOUT WITH CSV HEADER", f)
+
+            # Optional: Add TRUNCATE command if needed
+            # f.write(f"TRUNCATE {table};\n")
+
+            f.write("\n\n")
+
+    print(f"Backup successful! File saved to {BACKUP_FILE}")
+
+except Exception as e:
+    print(f"Error: {e}")
+
+finally:
+    if conn:
+        cursor.close()
+        conn.close()
