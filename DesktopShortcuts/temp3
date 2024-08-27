@@ -1,0 +1,55 @@
+import psycopg2
+import os
+from datetime import datetime
+
+# Database connection details
+HOST = "your_host"
+USERNAME = "your_username"
+PASSWORD = "your_password"
+DBNAME = "lumidb"
+
+# Tables to back up
+TABLES = ["lumi_poller.table1", "lumi_poller.table2", "lumi_poller.table3"]
+
+# Backup file name with timestamp
+BACKUP_DIR = "/path/to/backup"
+TIMESTAMP = datetime.now().strftime("%Y%m%d%H%M%S")
+BACKUP_FILE = os.path.join(BACKUP_DIR, f"lumidb_backup_{TIMESTAMP}.sql")
+
+# Create backup directory if it doesn't exist
+os.makedirs(BACKUP_DIR, exist_ok=True)
+
+try:
+    # Connect to PostgreSQL database
+    conn = psycopg2.connect(
+        host=HOST,
+        user=USERNAME,
+        password=PASSWORD,
+        dbname=DBNAME
+    )
+    cursor = conn.cursor()
+
+    with open(BACKUP_FILE, 'w') as f:
+        for table in TABLES:
+            # Export table schema
+            cursor.execute(f"SELECT 'CREATE TABLE ' || tablename || E'\n(\n' || array_to_string(array_agg(column_name || ' ' || data_type || coalesce('('||character_maximum_length||')','')), E',\n') || E'\n);' AS ddl FROM information_schema.columns WHERE table_schema = 'lumi_poller' AND table_name = '{table.split('.')[1]}';")
+            table_schema = cursor.fetchone()[0]
+            f.write(f"-- Schema for {table}\n")
+            f.write(table_schema + ";\n\n")
+
+            # Export table data
+            f.write(f"-- Data for {table}\n")
+            cursor.execute(f"COPY {table} TO STDOUT WITH CSV")
+            f.write(f"TRUNCATE {table};\n")
+            cursor.copy_expert(f"COPY {table} FROM STDIN WITH CSV", f)
+            f.write("\n\n")
+
+    print(f"Backup successful! File saved to {BACKUP_FILE}")
+
+except Exception as e:
+    print(f"Error: {e}")
+
+finally:
+    if conn:
+        cursor.close()
+        conn.close()
