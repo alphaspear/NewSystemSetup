@@ -1,79 +1,36 @@
-import psycopg2
-from psycopg2.extras import DictCursor
+#!/bin/bash
 
-# Connection details for on-prem PostgreSQL
-onprem_conn_info = {
-    'host': 'onprem_host',
-    'database': 'onprem_database',
-    'user': 'onprem_user',
-    'password': 'onprem_password'
-}
+# Database connection details
+HOST="your_host"
+USERNAME="your_username"
+DBNAME="lumidb"
 
-# Connection details for Cloud SQL PostgreSQL
-cloudsql_conn_info = {
-    'host': 'cloudsql_host',
-    'database': 'cloudsql_database',
-    'user': 'cloudsql_user',
-    'password': 'cloudsql_password'
-}
+# Tables to back up
+TABLES=("lumi_poller.table1" "lumi_poller.table2" "lumi_poller.table3")
 
-def migrate_data():
-    try:
-        # Connect to on-prem PostgreSQL
-        onprem_conn = psycopg2.connect(**onprem_conn_info)
-        onprem_cursor = onprem_conn.cursor(cursor_factory=DictCursor)
+# Backup file name with timestamp
+BACKUP_DIR="/path/to/backup"
+TIMESTAMP=$(date +%Y%m%d%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/lumidb_backup_$TIMESTAMP.backup"
 
-        # Connect to Cloud SQL PostgreSQL
-        cloudsql_conn = psycopg2.connect(**cloudsql_conn_info)
-        cloudsql_cursor = cloudsql_conn.cursor()
+# Create backup directory if it doesn't exist
+mkdir -p $BACKUP_DIR
 
-        # Fetch data from the on-prem table
-        onprem_cursor.execute("SELECT * FROM lumi_poller.poller_job_config")
-        rows = onprem_cursor.fetchall()
+# Construct the pg_dump command
+DUMP_CMD="pg_dump -h $HOST -U $USERNAME -d $DBNAME"
 
-        # Transform and insert data into Cloud SQL
-        for row in rows:
-            insert_query = """
-                INSERT INTO public.poller_job_config (
-                    poller_id, server_profile_id, parent_dataset_id, dataset_id, 
-                    parent_appflow_id, pipeline_id, pipeline_name, source_feed_name, 
-                    data_file_name_regex, control_file_name_regex, control_file_info, 
-                    file_retrieve_protocol, server_name, server_user_id, server_password, 
-                    source_system_name, source_system_type, file_location_path, 
-                    cron_expression, region_code, last_polled_ts, decommission_flag, 
-                    create_ts, last_update_ts, safe_name, key_name
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (poller_id) DO NOTHING;
-            """
+for TABLE in "${TABLES[@]}"; do
+  DUMP_CMD+=" -t $TABLE"
+done
 
-            # Map the on-prem columns to Cloud SQL columns
-            cloudsql_cursor.execute(insert_query, (
-                row['poller_id'], row['serv_prfl_id'], row['parnt_dataset_id'], row['dataset_id'], 
-                row['parnt_appl_flow_id'], row['ppln_id'], row['ppln_nm'], row['srce_feed_nm'], 
-                row['da_fl_nm_regex_tx'], row['cntl_fl_nm_regex_tx'], row['cntl_fl_info_tx'], 
-                row['fl_rtrv_prtcl_ds'], row['serv_nm'], row['serv_user_id'], row['serv_pswd_tx'], 
-                row['srce_sys_nm'], row['srce_sys_type_ds'], row['fl_locat_path_tx'], 
-                row['cron_exp_tx'], row['rgn_cd'], row['lst_polled_ts'], row['task_decom_in'], 
-                row['creat_ts'], row['lst_updt_ts'], None, None
-            ))
+DUMP_CMD+=" -F c -f $BACKUP_FILE"
 
-        # Commit the changes to the Cloud SQL instance
-        cloudsql_conn.commit()
+# Execute the pg_dump command
+echo "Backing up tables: ${TABLES[*]} from database $DBNAME..."
+eval $DUMP_CMD
 
-    except Exception as e:
-        print(f"Error: {e}")
-        if cloudsql_conn:
-            cloudsql_conn.rollback()
-    finally:
-        if onprem_cursor:
-            onprem_cursor.close()
-        if cloudsql_cursor:
-            cloudsql_cursor.close()
-        if onprem_conn:
-            onprem_conn.close()
-        if cloudsql_conn:
-            cloudsql_conn.close()
-
-if __name__ == '__main__':
-    migrate_data()
+if [ $? -eq 0 ]; then
+  echo "Backup successful! File saved to $BACKUP_FILE"
+else
+  echo "Backup failed!"
+fi
