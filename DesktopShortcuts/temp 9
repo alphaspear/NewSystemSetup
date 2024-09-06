@@ -1,0 +1,43 @@
+package com.example.lumipollerapi.service;
+
+import com.google.cloud.spring.pubsub.support.BasicAcknowledgeablePubsubMessage;
+import com.google.cloud.spring.pubsub.core.PubSubTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import javax.annotation.PostConstruct;
+
+@Service
+public class MessageService {
+
+    private final PubSubTemplate pubSubTemplate;
+
+    @Value("${gcp.pubsub.subscription.name}")
+    private String subscriptionName;
+
+    public MessageService(PubSubTemplate pubSubTemplate) {
+        this.pubSubTemplate = pubSubTemplate;
+    }
+
+    @PostConstruct
+    public void subscribeToPubSub() {
+        pubSubTemplate.subscribe(subscriptionName, this::handleMessage);
+    }
+
+    // Method to handle received messages
+    public void handleMessage(BasicAcknowledgeablePubsubMessage message) {
+        String receivedMessage = message.getPubsubMessage().getData().toStringUtf8();
+        System.out.println("Received message: " + receivedMessage);
+
+        // Call the empty function
+        processMessage();
+
+        // Acknowledge the message
+        message.ack();
+    }
+
+    // Empty function to be called
+    public void processMessage() {
+        // Empty function - no logic here yet
+        System.out.println("Processing message...");
+    }
+}
