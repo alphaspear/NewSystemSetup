@@ -11,7 +11,9 @@ import com.jcraft.jsch.Session;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Vector;
 
@@ -19,26 +21,31 @@ import java.util.Vector;
 public class SFTPPoller implements Poller {
     static Logger logger = LogManager.getLogger(SFTPPoller.class);
 
-    private final String host;
-    private final int port;
-    private final String user;
-    private final String password;
-    private final int sessionTimeout;
-    private final int channelTimeout;
+    private String host;
+    private int port;
+    private String user;
+    private String password;
+    private int sessionTimeout;
+    private int channelTimeout;
     private final String directory;
 
     private Session session;
     private ChannelSftp sftpChannel;
 
     @Autowired
-    public SFTPPoller(SftpConfig sftpConfig, @Value("${sftp.directory}") String directory) {
-        this.host = sftpConfig.host();
-        this.port = sftpConfig.port();
-        this.user = sftpConfig.userName();
-        this.password = sftpConfig.password();
-        this.sessionTimeout = sftpConfig.sessionTimeOut();
-        this.channelTimeout = sftpConfig.channelTimeOut();
+    public SFTPPoller(Environment env, @Value("${sftp.directory}") String directory) {
+        initializeSftpConfig(env);
         this.directory = directory;
+    }
+
+    private void initializeSftpConfig(Environment env) {
+        // Initialize SFTP configuration using Environment
+        this.host = env.getProperty("sftp.host");
+        this.port = env.getProperty("sftp.port", Integer.class, 22); // Default to port 22 if not specified
+        this.user = env.getProperty("sftp.user");
+        this.password = env.getProperty("sftp.password");
+        this.sessionTimeout = env.getProperty("sftp.sessionTimeout", Integer.class, 10000); // Default session timeout
+        this.channelTimeout = env.getProperty("sftp.channelTimeout", Integer.class, 5000); // Default channel timeout
     }
 
     @Override
